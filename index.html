@@ -1,2 +1,124 @@
-山盛りのテスト</br>
-山盛りのからあげ
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ガチャゲーム</title>
+<style>
+body{
+    font-family: sans-serif;
+    background: linear-gradient(135deg,#4facfe,#00f2fe);
+    text-align:center;
+    color:white;
+    margin:0;
+    padding-top:60px;
+}
+
+h1{
+    font-size:40px;
+}
+
+#gachaButton{
+    padding:15px 40px;
+    font-size:20px;
+    border:none;
+    border-radius:10px;
+    background:#ffcc00;
+    color:#333;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+#gachaButton:hover{
+    transform:scale(1.1);
+}
+
+#result{
+    margin-top:40px;
+    font-size:28px;
+}
+
+.card{
+    margin-top:20px;
+    padding:20px;
+    display:inline-block;
+    border-radius:15px;
+    background:white;
+    color:#333;
+    min-width:200px;
+}
+
+.rarity{
+    font-size:20px;
+    margin-bottom:10px;
+}
+
+.star{
+    color:gold;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎰 ガチャゲーム</h1>
+<button id="gachaButton">ガチャを引く！</button>
+
+<div id="result"></div>
+
+<script>
+
+const characters = [
+{name:"スライム", rarity:1},
+{name:"ゴブリン", rarity:1},
+{name:"剣士", rarity:2},
+{name:"魔法使い", rarity:2},
+{name:"騎士", rarity:3},
+{name:"ドラゴンナイト", rarity:4},
+{name:"伝説の勇者", rarity:5}
+];
+
+function getRandomCharacter(){
+
+let rand = Math.random();
+
+if(rand < 0.5) return randomFromRarity(1);
+if(rand < 0.75) return randomFromRarity(2);
+if(rand < 0.9) return randomFromRarity(3);
+if(rand < 0.98) return randomFromRarity(4);
+return randomFromRarity(5);
+
+}
+
+function randomFromRarity(rarity){
+let list = characters.filter(c => c.rarity === rarity);
+return list[Math.floor(Math.random()*list.length)];
+}
+
+function drawGacha(){
+
+const resultDiv = document.getElementById("result");
+resultDiv.innerHTML = "ガチャを回しています...";
+
+setTimeout(()=>{
+
+let char = getRandomCharacter();
+
+let stars = "★".repeat(char.rarity);
+
+resultDiv.innerHTML = `
+<div class="card">
+<div class="rarity"><span class="star">${stars}</span></div>
+<div class="name">${char.name}</div>
+</div>
+`;
+
+},1000);
+
+}
+
+document.getElementById("gachaButton").addEventListener("click",drawGacha);
+
+</script>
+
+</body>
+</html>
