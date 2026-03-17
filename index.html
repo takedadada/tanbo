@@ -2,121 +2,203 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ガチャゲーム</title>
+<title>パックマン風（強化版）</title>
 <style>
 body{
-    font-family: sans-serif;
-    background: linear-gradient(135deg,#4facfe,#00f2fe);
-    text-align:center;
+    background:black;
     color:white;
-    margin:0;
-    padding-top:60px;
+    text-align:center;
+    font-family:sans-serif;
 }
 
-h1{
-    font-size:40px;
-}
-
-#gachaButton{
-    padding:15px 40px;
-    font-size:20px;
-    border:none;
-    border-radius:10px;
-    background:#ffcc00;
-    color:#333;
-    cursor:pointer;
-    transition:0.2s;
-}
-
-#gachaButton:hover{
-    transform:scale(1.1);
-}
-
-#result{
-    margin-top:40px;
-    font-size:28px;
-}
-
-.card{
+canvas{
+    background:#111;
     margin-top:20px;
-    padding:20px;
-    display:inline-block;
-    border-radius:15px;
-    background:white;
-    color:#333;
-    min-width:200px;
-}
-
-.rarity{
-    font-size:20px;
-    margin-bottom:10px;
-}
-
-.star{
-    color:gold;
+    border:2px solid white;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎰 ガチャゲーム</h1>
-<button id="gachaButton">ガチャを引く！</button>
+<h1>👾 パックマン風ゲーム（強化版）</h1>
+<p>矢印キーで移動！</p>
+<p>スコア: <span id="score">0</span></p>
 
-<div id="result"></div>
+<canvas id="game" width="400" height="400"></canvas>
 
 <script>
 
-const characters = [
-{name:"スライム", rarity:1},
-{name:"ゴブリン", rarity:1},
-{name:"剣士", rarity:2},
-{name:"魔法使い", rarity:2},
-{name:"騎士", rarity:3},
-{name:"ドラゴンナイト", rarity:4},
-{name:"伝説の勇者", rarity:5}
-];
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-function getRandomCharacter(){
+const tileSize = 20;
+const rows = 20;
+const cols = 20;
 
-let rand = Math.random();
+let score = 0;
 
-if(rand < 0.5) return randomFromRarity(1);
-if(rand < 0.75) return randomFromRarity(2);
-if(rand < 0.9) return randomFromRarity(3);
-if(rand < 0.98) return randomFromRarity(4);
-return randomFromRarity(5);
-
+// マップ生成
+let map = [];
+for(let y=0;y<rows;y++){
+    map[y] = [];
+    for(let x=0;x<cols;x++){
+        if(y===0 || y===rows-1 || x===0 || x===cols-1){
+            map[y][x] = 1;
+        }else{
+            map[y][x] = 2;
+        }
+    }
 }
 
-function randomFromRarity(rarity){
-let list = characters.filter(c => c.rarity === rarity);
-return list[Math.floor(Math.random()*list.length)];
+// ワープトンネル（左右中央）
+map[10][0] = 0;
+map[10][cols-1] = 0;
+
+// プレイヤー
+let player = {
+    x:1,
+    y:1,
+    dx:0,
+    dy:0,
+    mouth:0
+};
+
+// ゴースト
+let ghost = {
+    x:10,
+    y:10
+};
+
+document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowUp"){player.dx=0;player.dy=-1;}
+    if(e.key==="ArrowDown"){player.dx=0;player.dy=1;}
+    if(e.key==="ArrowLeft"){player.dx=-1;player.dy=0;}
+    if(e.key==="ArrowRight"){player.dx=1;player.dy=0;}
+});
+
+// プレイヤー更新
+function updatePlayer(){
+
+    let nx = player.x + player.dx;
+    let ny = player.y + player.dy;
+
+    // ワープ
+    if(nx < 0){ player.x = cols-1; return; }
+    if(nx >= cols){ player.x = 0; return; }
+
+    if(map[ny][nx] !== 1){
+        player.x = nx;
+        player.y = ny;
+    }
+
+    // ドット取得
+    if(map[player.y][player.x] === 2){
+        map[player.y][player.x] = 0;
+        score++;
+        document.getElementById("score").textContent = score;
+    }
+
+    // 口パク
+    player.mouth += 0.2;
 }
 
-function drawGacha(){
+// ゴーストAI（プレイヤー追尾）
+function updateGhost(){
 
-const resultDiv = document.getElementById("result");
-resultDiv.innerHTML = "ガチャを回しています...";
+    let bestMove = {dx:0,dy:0};
+    let bestDist = Infinity;
 
-setTimeout(()=>{
+    let dirs = [
+        {dx:0,dy:1},
+        {dx:0,dy:-1},
+        {dx:1,dy:0},
+        {dx:-1,dy:0}
+    ];
 
-let char = getRandomCharacter();
+    for(let d of dirs){
+        let nx = ghost.x + d.dx;
+        let ny = ghost.y + d.dy;
 
-let stars = "★".repeat(char.rarity);
+        if(map[ny][nx] === 1) continue;
 
-resultDiv.innerHTML = `
-<div class="card">
-<div class="rarity"><span class="star">${stars}</span></div>
-<div class="name">${char.name}</div>
-</div>
-`;
+        let dist = Math.abs(player.x - nx) + Math.abs(player.y - ny);
 
-},1000);
+        if(dist < bestDist){
+            bestDist = dist;
+            bestMove = d;
+        }
+    }
 
+    ghost.x += bestMove.dx;
+    ghost.y += bestMove.dy;
 }
 
-document.getElementById("gachaButton").addEventListener("click",drawGacha);
+// 衝突判定
+function checkCollision(){
+    if(player.x === ghost.x && player.y === ghost.y){
+        alert("ゲームオーバー！");
+        location.reload();
+    }
+}
+
+// 描画
+function draw(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+
+            if(map[y][x] === 1){
+                ctx.fillStyle = "blue";
+                ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize);
+            }
+
+            if(map[y][x] === 2){
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(x*tileSize+10,y*tileSize+10,3,0,Math.PI*2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // パックマン（口パク）
+    ctx.fillStyle = "yellow";
+    let angle = Math.abs(Math.sin(player.mouth)) * 0.5;
+
+    let dirAngle = 0;
+    if(player.dx === 1) dirAngle = 0;
+    if(player.dx === -1) dirAngle = Math.PI;
+    if(player.dy === -1) dirAngle = -Math.PI/2;
+    if(player.dy === 1) dirAngle = Math.PI/2;
+
+    ctx.beginPath();
+    ctx.moveTo(player.x*tileSize+10,player.y*tileSize+10);
+    ctx.arc(
+        player.x*tileSize+10,
+        player.y*tileSize+10,
+        8,
+        dirAngle + angle,
+        dirAngle + (Math.PI*2 - angle)
+    );
+    ctx.fill();
+
+    // ゴースト
+    ctx.fillStyle = "red";
+    ctx.fillRect(ghost.x*tileSize+4,ghost.y*tileSize+4,12,12);
+}
+
+// ループ
+function loop(){
+    updatePlayer();
+    updateGhost();
+    checkCollision();
+    draw();
+}
+
+setInterval(loop,120);
 
 </script>
 
